@@ -57,3 +57,32 @@ If you prefer a slimmer look without the timeline and progress bar, simply add `
 **URL Example:**
 ```text
 file:///C:/.../tuna-widget.html?nobar
+```
+<img width="976" height="208" alt="Screenshot_20251212_193544" src="https://github.com/user-attachments/assets/221dec73-ab79-4ed6-bee4-7c2a2a5bd5d3" />
+
+
+### 2. Local Cover Art (Zero Delay)
+To ensure cover art appears instantly without waiting for Tuna to download it, place your album covers in the **same folder** as the HTML file.
+
+**Naming Convention:**
+* Start with `cover_`
+* Replace spaces with underscores `_`
+* Remove special characters (brackets, colons, `&`, `!`, etc.)
+* File extension: `.png`
+
+**Examples:**
+
+| Album Name | File Name |
+| :--- | :--- |
+| `Thriller` | `cover_Thriller.png` |
+| `Yokaze Nostalgia` | `cover_Yokaze_Nostalgia.png` |
+| `Fly For Fun (FlyFF) [Lo-Fi]` | `cover_Fly_For_Fun_FlyFF_Lo-Fi.png` |
+
+---
+
+## 🎨 Customization
+
+* **Logo:** Just replace `logo.png` in the folder with your own (keep the filename the same).
+* **Colors:** Open the `.html` file in a text editor (like Notepad or VS Code) and search for `#1DB954`. Replace all occurrences of this Hex-Code to change the Spotify Green to your specific brand color.
+
+---
