@@ -2,7 +2,8 @@
 
 > **A shape-shifting, dark glassmorphism widget for OBS Studio & Tuna Plugin.**
 
-![Preview of the Widget](preview.gif)
+[Preview of the Widget](https://github.com/user-attachments/assets/490b57b8-c5e4-4e26-9cbb-7008b882c08a)
+
 
 **NeonMorph** is a high-performance HTML/CSS/JS overlay designed for the [OBS Tuna Plugin](https://github.com/univrsal/tuna). It features a reactive UI that morphs between a compact logo state and a full-width player upon song changes, complete with simulated neon-flicker typography and instant local file caching.
 
