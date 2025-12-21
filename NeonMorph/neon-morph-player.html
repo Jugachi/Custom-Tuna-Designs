@@ -2,186 +2,117 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <title>OBS Tuna Widget (Neon Morph)</title>
+    <title>OBS Tuna Widget - Neon Morph</title>
     <style>
         @import url('https://fonts.googleapis.com/css2?family=Montserrat:wght@400;600;700;900&display=swap');
 
-        /* --- GLOBAL LAYOUT --- */
         body {
             background-color: transparent;
             margin: 0; padding: 0; height: 100vh;
             font-family: 'Montserrat', sans-serif;
             overflow: hidden;
-            /* Center widget on canvas */
             display: flex; justify-content: center; align-items: center;
         }
 
-        /* --- MAIN CONTAINER --- */
+        #debug-status {
+            position: absolute; top: 20px; left: 20px;
+            background: rgba(0, 0, 0, 0.9); color: #00ff00;
+            padding: 20px; border-radius: 10px; font-size: 24px;
+            z-index: 1000; border: 2px solid #1DB954;
+            display: none;
+            font-family: monospace;
+        }
+
         #card {
             display: flex; align-items: center;
             background: rgba(18, 18, 18, 0.95);
             backdrop-filter: blur(20px);
             border: 2px solid rgba(255, 255, 255, 0.15);
-            border-radius: 30px;
-            padding: 30px;
+            border-radius: 30px; padding: 30px;
             box-shadow: 0 20px 60px rgba(0, 0, 0, 0.6);
-            
-            /* Default dimensions (Standard Mode) */
-            width: 1200px; 
-            height: 250px; 
-            
-            /* Smooth transitions for Morphing and Compact Mode */
+            width: 1200px; height: 250px; 
             transition: width 1.5s cubic-bezier(0.2, 0.8, 0.2, 1), 
                         height 1.5s cubic-bezier(0.2, 0.8, 0.2, 1),
-                        border-radius 1.5s ease, 
-                        opacity 0.5s ease,
-                        transform 0.5s ease;
-            
+                        border-radius 1.5s ease, opacity 0.5s ease, transform 0.5s ease;
             position: relative; overflow: hidden;
         }
 
-        /* --- COMPACT MODE (Activated via ?nobar in URL) --- */
-        #card.compact {
-            height: 190px;
-        }
-        #card.compact #time-container,
-        #card.compact #progress_bg {
-            display: none !important;
-        }
-        #card.compact #cover_img {
-            width: 170px; height: 170px;
-        }
-        #card.compact #logo-img {
-            width: 140px; height: 140px;
-        }
-        #card.compact #title {
-            font-size: 58px; /* Larger font for compact mode */
-        }
-        #card.compact #artist {
-            font-size: 28px; margin-bottom: 0;
-        }
+        #card.compact { height: 190px; }
+        #card.compact #time-container, #card.compact #progress_bg { display: none !important; }
+        #card.compact #cover_img { width: 170px; height: 170px; }
+        #card.compact #title { font-size: 58px; }
+        #card.compact #artist { font-size: 28px; margin-bottom: 0; }
 
-        /* --- MORPHING STATES (Transition Animation) --- */
-        #card.morphing {
-            width: 250px; border-radius: 50%; padding: 0;
-            border-color: #1DB954; box-shadow: 0 0 60px rgba(29, 185, 84, 0.5);
-        }
-        #card.compact.morphing {
-            width: 190px; height: 190px; /* Smaller circle for compact mode */
-        }
+        #card.morphing { width: 250px; border-radius: 50%; padding: 0; border-color: #1DB954; }
+        #card.compact.morphing { width: 190px; height: 190px; }
         #card.morphing #content-wrapper { opacity: 0; pointer-events: none; }
         #card.morphing #logo-layer { opacity: 1; animation: pulse 2s infinite alternate; }
-        #card.hidden { opacity: 0; transform: translateY(50px); }
+        #card.hidden { opacity: 0; transform: translateY(100px); pointer-events: none; }
 
-        @keyframes pulse {
-            from { transform: translate(-50%, -50%) scale(1); }
-            to { transform: translate(-50%, -50%) scale(1.1); }
-        }
+        @keyframes pulse { from { transform: translate(-50%, -50%) scale(1); } to { transform: translate(-50%, -50%) scale(1.1); } }
 
-        /* --- LAYERS --- */
         #logo-layer {
-            position: absolute; top: 50%; left: 50%;
-            transform: translate(-50%, -50%) scale(0.5);
+            position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%) scale(0.5);
             display: flex; justify-content: center; align-items: center;
-            opacity: 0; transition: all 0.5s ease; pointer-events: none;
-            width: 100%; height: 100%; z-index: 10;
+            opacity: 0; transition: all 0.5s ease; width: 100%; height: 100%; z-index: 10;
         }
-        #logo-img {
-            width: 190px; height: 190px; object-fit: contain;
-            filter: drop-shadow(0 0 25px rgba(29, 185, 84, 0.6));
-            transition: width 1.5s ease, height 1.5s ease;
-        }
+        #logo-img { width: 190px; height: 190px; object-fit: contain; filter: drop-shadow(0 0 25px rgba(29, 185, 84, 0.6)); }
 
-        #content-wrapper {
-            display: flex; align-items: center; width: 100%;
-            transition: opacity 0.5s ease; opacity: 1;
-        }
-
+        #content-wrapper { display: flex; align-items: center; width: 100%; transition: opacity 0.5s ease; }
         #cover_container { position: relative; margin-right: 35px; margin-left: 30px; flex-shrink: 0; }
         
         #cover_img { 
             width: 240px; height: 240px; 
             border-radius: 20px; object-fit: cover; 
-            box-shadow: 0 10px 30px rgba(0,0,0,0.5); display: block; 
-            transition: width 1.5s ease, height 1.5s ease;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.5);
+            transition: opacity 0.5s ease-in-out;
+            opacity: 1;
         }
         
+        #cover_img.fade { opacity: 0; }
+
         #info { flex-grow: 1; display: flex; flex-direction: column; justify-content: center; min-width: 0; overflow: hidden; padding-right: 30px; }
 
-        /* --- NEON TEXT EFFECT --- */
         #label {
             color: #1DB954; font-size: 44px; font-weight: 900; letter-spacing: 6px; 
             text-transform: uppercase; margin-bottom: 12px; line-height: 1;
-            -webkit-font-smoothing: antialiased;
-            text-shadow: 0 0 5px #1DB954, 0 0 15px rgba(29, 185, 84, 0.8), 0 0 30px rgba(29, 185, 84, 0.5);
+            text-shadow: 0 0 5px #1DB954, 0 0 15px rgba(29, 185, 84, 0.8);
             animation: neon-flicker 6s infinite; 
         }
 
-        /* Simulates a broken/flickering neon sign */
         @keyframes neon-flicker {
-            0%, 89% { opacity: 1; text-shadow: 0 0 5px #1DB954, 0 0 15px rgba(29, 185, 84, 0.8), 0 0 30px rgba(29, 185, 84, 0.5); }
+            0%, 89% { opacity: 1; text-shadow: 0 0 5px #1DB954, 0 0 15px rgba(29, 185, 84, 0.8); }
             90% { opacity: 0.3; text-shadow: none; }
-            91% { opacity: 1; text-shadow: 0 0 5px #1DB954, 0 0 15px rgba(29, 185, 84, 0.8); }
-            92% { opacity: 0.2; text-shadow: none; }
-            93% { opacity: 1; text-shadow: 0 0 5px #1DB954, 0 0 15px rgba(29, 185, 84, 0.8); }
-            96% { opacity: 0.4; text-shadow: none; }
-            100% { opacity: 1; text-shadow: 0 0 5px #1DB954, 0 0 15px rgba(29, 185, 84, 0.8), 0 0 30px rgba(29, 185, 84, 0.5); }
+            100% { opacity: 1; text-shadow: 0 0 5px #1DB954, 0 0 15px rgba(29, 185, 84, 0.8); }
         }
 
-        /* --- SCROLLING TEXT --- */
-        #title-wrapper {
-            width: 100%; overflow: hidden; white-space: nowrap; margin-bottom: 5px; position: relative; display: block;
-        }
-        #title {
-            color: #ffffff; font-size: 48px; font-weight: 800; display: inline-block;
-            white-space: nowrap; text-shadow: 0 4px 15px rgba(0,0,0,0.4);
-            transform: translateX(0); -webkit-font-smoothing: antialiased; padding-right: 20px;
-            transition: font-size 0.5s ease; 
-        }
+        #title-wrapper { width: 100%; overflow: hidden; white-space: nowrap; margin-bottom: 5px; position: relative; }
+        #title { color: #ffffff; font-size: 48px; font-weight: 800; display: inline-block; white-space: nowrap; }
         .scrolling { animation: scroll-text var(--duration, 10s) linear infinite alternate; }
         @keyframes scroll-text {
             0%, 15% { transform: translateX(0); }
             85%, 100% { transform: translateX(var(--scroll-dist, -100%)); }
         }
 
-        #artist {
-            color: #cccccc; font-size: 24px; font-weight: 500; margin-bottom: 25px;
-            white-space: nowrap; overflow: hidden; text-overflow: ellipsis; -webkit-font-smoothing: antialiased;
-            transition: font-size 0.5s ease, margin 0.5s ease;
-        }
-        
-        /* --- PROGRESS BAR --- */
-        #time-container {
-            display: flex; justify-content: space-between; font-size: 20px; 
-            color: #aaaaaa; margin-bottom: 10px; font-weight: 700; letter-spacing: 1px;
-            -webkit-font-smoothing: antialiased; font-feature-settings: "tnum";
-        }
-        #progress_bg {
-            width: 100%; height: 12px; background: rgba(255, 255, 255, 0.1);
-            border-radius: 6px; overflow: hidden;
-        }
-        #progress_bar {
-            height: 100%; background: linear-gradient(90deg, #1DB954, #1ed760);
-            width: 0%; border-radius: 6px; transition: width 0.1s linear;
-            box-shadow: 0 0 20px rgba(29, 185, 84, 0.5);
-        }
+        #artist { color: #cccccc; font-size: 24px; font-weight: 500; margin-bottom: 25px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+        #time-container { display: flex; justify-content: space-between; font-size: 20px; color: #aaaaaa; margin-bottom: 10px; font-weight: 700; }
+        #progress_bg { width: 100%; height: 12px; background: rgba(255, 255, 255, 0.1); border-radius: 6px; overflow: hidden; }
+        #progress_bar { height: 100%; background: linear-gradient(90deg, #1DB954, #1ed760); width: 0%; border-radius: 6px; }
     </style>
 </head>
 <body>
 
+    <div id="debug-status">DEBUG: Searching Tuna...</div>
+
     <div id="card" class="hidden">
         <div id="logo-layer"><img id="logo-img" src="logo.png" alt="Logo"></div>
         <div id="content-wrapper">
-            <div id="cover_container"><img id="cover_img" src="" alt=""></div>
+            <div id="cover_container"><img id="cover_img" src="logo.png" alt=""></div>
             <div id="info">
                 <div id="label">NOW PLAYING</div>
-                <div id="title-wrapper"><div id="title">Waiting...</div></div>
+                <div id="title-wrapper"><div id="title">Fetching information...</div></div>
                 <div id="artist">-</div>
-                
-                <div id="time-container">
-                    <span id="current-time">0:00</span>
-                    <span id="total-time">0:00</span>
-                </div>
+                <div id="time-container"><span id="current-time">0:00</span><span id="total-time">0:00</span></div>
                 <div id="progress_bg"><div id="progress_bar"></div></div>
             </div>
         </div>
@@ -191,172 +122,175 @@
         let lastTitle = null;
         let isTransitioning = false;
         let scrollTimer = null;
+        let visibilityTimer = null;
+        let isForcedVisible = false;
+        const backupPlaceholder = "https://cdn-icons-png.flaticon.com/512/2329/2329068.png";
+        const primaryPlaceholder = "logo.png";
 
-        // --- CONFIGURATION ---
-        // Check if "?nobar" is present in URL to toggle Compact Mode
+        // HANDLING URL PARAMETERS
         const urlParams = new URLSearchParams(window.location.search);
+        
+        // ?nobar -> Removes progress bar and time info
         const hideProgressBar = urlParams.has('nobar');
         
-        if (hideProgressBar) {
-            document.getElementById('card').classList.add('compact');
+        // ?ws or ?youtube -> Pulls cover art from Tuna Web Server URL
+        const useExternalCover = urlParams.has('ws') || urlParams.has('youtube');
+        
+        // ?local -> Looks for local files (cover_Album_Name.png)
+        const useLocalCover = urlParams.has('local');
+        
+        // ?firebot -> Hidden by default, appears via #hash triggers
+        const isFirebotMode = urlParams.has('firebot');
+        
+        // ?debug -> Displays the green status overlay
+        const isDebug = urlParams.has('debug');
+
+        if (hideProgressBar) document.getElementById('card').classList.add('compact');
+        if (isDebug) document.getElementById('debug-status').style.display = 'block';
+
+        function log(msg, color = "#00ff00") {
+            if (isDebug) {
+                const el = document.getElementById('debug-status');
+                el.innerText = "DEBUG: " + msg;
+                el.style.color = color;
+            }
         }
 
-        function formatTime(ms) {
-            if (!ms) return "0:00";
-            const totalSeconds = Math.floor(ms / 1000);
-            const minutes = Math.floor(totalSeconds / 60);
-            const seconds = totalSeconds % 60;
-            return `${minutes}:${seconds < 10 ? '0' : ''}${seconds}`;
-        }
-
-        /**
-         * Converts album name to local file name format.
-         * Example: "Fly For Fun (FlyFF) [Lo-Fi]" -> "cover_Fly_For_Fun_FlyFF_Lo-Fi.png"
-         */
         function getLocalFileName(albumName) {
-            if (!albumName) return "logo.png"; 
-            // Remove special chars, allow letters, numbers, spaces, hyphens
-            let safeName = albumName.replace(/[^a-zA-Z0-9 \-]/g, "");
-            // Replace multiple spaces with single space
-            safeName = safeName.replace(/\s+/g, " ");
-            // Replace spaces with underscores
-            safeName = safeName.replace(/ /g, "_");
+            if (!albumName) return primaryPlaceholder;
+            let safeName = albumName.replace(/[^a-zA-Z0-9 \-]/g, "").replace(/\s+/g, " ").replace(/ /g, "_");
             return "cover_" + safeName + ".png";
         }
 
-        /**
-         * Main Data Loop (Fetches from Tuna Web Server)
-         */
+        window.addEventListener('hashchange', () => {
+            log("Signal received: " + window.location.hash);
+            triggerShow();
+        });
+
+        function triggerShow() {
+            isForcedVisible = true;
+            document.getElementById('card').classList.remove('hidden');
+            if (visibilityTimer) clearTimeout(visibilityTimer);
+            visibilityTimer = setTimeout(() => {
+                isForcedVisible = false;
+                if (isFirebotMode) document.getElementById('card').classList.add('hidden');
+            }, 15000);
+        }
+
+        triggerShow();
+
         async function updateData() {
             try {
                 const response = await fetch('http://localhost:1608/');
                 const data = await response.json();
                 const card = document.getElementById('card');
 
-                // Check active state
                 if (!data.title) {
-                    if (!card.classList.contains('hidden')) card.classList.add('hidden');
+                    log("Connected, but no active song.", "orange");
                     return;
-                } else {
-                    card.classList.remove('hidden');
                 }
 
-                // Initial Load
+                if (isFirebotMode && !isForcedVisible) card.classList.add('hidden');
+                else card.classList.remove('hidden');
+
                 if(lastTitle === null) {
                     lastTitle = data.title;
                     updateVisuals(data);
                 }
 
                 const remaining = (data.duration || 0) - (data.progress || 0);
+                if (remaining <= 2000 && remaining > 0 && !isTransitioning) startMorph(card);
 
-                // Trigger Morph 2 seconds before song ends
-                if (remaining <= 2000 && remaining > 0 && !isTransitioning) {
-                    startMorph(card);
-                }
-
-                // Handle Song Change
                 if (lastTitle !== data.title) {
-                    if (isTransitioning) {
-                        finishMorph(card, data);
-                    } else {
-                        // Manual skip logic
+                    if (isTransitioning) finishMorph(card, data);
+                    else {
                         startMorph(card);
-                        setTimeout(() => {
-                            finishMorph(card, data);
-                        }, 1600);
+                        setTimeout(() => { finishMorph(card, data); }, 1600);
                     }
                 } 
                 
-                if (!isTransitioning) {
-                    updateTimeAndBar(data);
-                }
-            } catch (e) { 
-                // Tuna might be closed/restarting, ignore errors
+                if (!isTransitioning) updateTimeAndBar(data);
+            } catch (e) {
+                log("ERROR: Tuna Plugin not found (Check Port 1608)", "red");
             }
         }
 
-        // --- ANIMATION LOGIC ---
-
-        function startMorph(card) {
-            isTransitioning = true;
-            card.classList.add('morphing');
-        }
-
+        function startMorph(card) { isTransitioning = true; card.classList.add('morphing'); }
         function finishMorph(card, data) {
             updateVisuals(data);
             lastTitle = data.title;
-            // Wait for logo display (500ms) then expand
             setTimeout(() => {
                 card.classList.remove('morphing');
-                // Wait for expansion animation (1600ms buffer)
                 setTimeout(() => { isTransitioning = false; }, 1600);
             }, 500);
         }
 
-        // --- VISUAL UPDATES ---
-
         function updateVisuals(data) {
             const titleEl = document.getElementById('title');
-            
-            // Clear old scroll timer to prevent glitches
             if (scrollTimer) clearTimeout(scrollTimer);
-
-            // Reset Scroll State
             titleEl.classList.remove('scrolling');
             titleEl.style.transform = 'translateX(0)';
-            titleEl.style.removeProperty('--scroll-dist');
-            titleEl.style.removeProperty('--duration');
-            
-            // Update Text
             titleEl.innerText = data.title;
             
-            let fullInfo = "";
-            if (data.artists && data.artists.length > 0) fullInfo += data.artists.join(', ');
-            else fullInfo += "Unknown Artist";
-            if (data.album && data.album !== "") fullInfo += ` — ${data.album}`;
-            if (data.release_year && data.release_year > 0) fullInfo += ` (${data.release_year})`;
+            let fullInfo = (data.artists?.join(', ') || "Unknown Artist") + (data.album ? ` — ${data.album}` : "");
             document.getElementById('artist').innerText = fullInfo;
 
-            // Update Cover (Local File Access)
             const img = document.getElementById('cover_img');
-            const fileName = getLocalFileName(data.album);
-            img.src = fileName;
-            img.onerror = function() { this.src = "logo.png"; }; // Fallback to logo
+            
+            img.src = primaryPlaceholder;
+            img.onerror = function() { 
+                if (this.src.includes(primaryPlaceholder)) {
+                    this.src = backupPlaceholder; 
+                }
+            };
+            
+            setTimeout(() => {
+                img.classList.add('fade');
+                
+                setTimeout(() => {
+                    let finalSrc = primaryPlaceholder;
+                    if (useExternalCover && data.cover_url) {
+                        finalSrc = data.cover_url;
+                    } else if (useLocalCover) {
+                        finalSrc = getLocalFileName(data.album);
+                    }
+                    
+                    img.src = finalSrc;
+                    img.classList.remove('fade');
+                    
+                    img.onerror = function() { 
+                        this.src = primaryPlaceholder;
+                        this.onerror = function() { this.src = backupPlaceholder; };
+                    };
+                }, 500);
+            }, 2000);
 
-            // Logic for Scrolling Text (wait 5s before starting)
             scrollTimer = setTimeout(() => {
                 const wrapper = document.getElementById('title-wrapper');
-                const wrapperWidth = wrapper.getBoundingClientRect().width;
                 const textWidth = titleEl.getBoundingClientRect().width;
-
-                // Only scroll if text is actually wider than container
-                if (textWidth > (wrapperWidth + 1)) {
-                    const distance = (textWidth - wrapperWidth) + 10;
-                    titleEl.style.setProperty('--scroll-dist', `-${distance}px`);
-                    // Calculate speed based on length
-                    const duration = Math.max(8, distance / 50); 
-                    titleEl.style.setProperty('--duration', `${duration}s`);
+                if (textWidth > wrapper.getBoundingClientRect().width + 1) {
+                    const dist = (textWidth - wrapper.getBoundingClientRect().width) + 10;
+                    titleEl.style.setProperty('--scroll-dist', `-${dist}px`);
+                    titleEl.style.setProperty('--duration', `${Math.max(8, dist / 50)}s`);
                     titleEl.classList.add('scrolling');
                 }
             }, 5000); 
-            
-            updateTimeAndBar(data);
         }
 
         function updateTimeAndBar(data) {
-            if (hideProgressBar) return; // Skip calculation in compact mode
-
-            const current = data.progress || 0;
-            const total = data.duration || 1;
-            const percentage = (current / total) * 100;
-            document.getElementById('progress_bar').style.width = percentage + "%";
-            document.getElementById('current-time').innerText = formatTime(current);
-            document.getElementById('total-time').innerText = formatTime(total);
+            if (hideProgressBar) return;
+            const p = ((data.progress || 0) / (data.duration || 1)) * 100;
+            document.getElementById('progress_bar').style.width = p + "%";
+            document.getElementById('current-time').innerText = formatTime(data.progress);
+            document.getElementById('total-time').innerText = formatTime(data.duration);
         }
 
-        // Start Loop (10fps for smooth bar, low CPU usage)
-        setInterval(updateData, 100);
-        updateData();
+        function formatTime(ms) {
+            const s = Math.floor((ms || 0) / 1000);
+            return `${Math.floor(s / 60)}:${(s % 60).toString().padStart(2, '0')}`;
+        }
+
+        setInterval(updateData, 500);
     </script>
 </body>
 </html>
