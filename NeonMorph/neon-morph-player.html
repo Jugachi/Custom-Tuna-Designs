@@ -168,12 +168,29 @@
         });
 
         function triggerShow() {
+            const card = document.getElementById('card');
             isForcedVisible = true;
-            document.getElementById('card').classList.remove('hidden');
+            
+            card.classList.remove('hidden');
+            startMorph(card);
+            
+            setTimeout(async () => {
+                try {
+                    const response = await fetch('http://localhost:1608/');
+                    const data = await response.json();
+                    if (data.title) {
+                        finishMorph(card, data);
+                    }
+                } catch(e) { log("Error fetching during trigger", "red"); }
+            }, 1000);
+
             if (visibilityTimer) clearTimeout(visibilityTimer);
             visibilityTimer = setTimeout(() => {
                 isForcedVisible = false;
-                if (isFirebotMode) document.getElementById('card').classList.add('hidden');
+                if (isFirebotMode) {
+                    startMorph(card);
+                    setTimeout(() => { card.classList.add('hidden'); }, 1500);
+                }
             }, 15000);
         }
 
@@ -190,8 +207,11 @@
                     return;
                 }
 
-                if (isFirebotMode && !isForcedVisible) card.classList.add('hidden');
-                else card.classList.remove('hidden');
+                if (isFirebotMode && !isForcedVisible) {
+                    // Handled by visibilityTimer logic
+                } else {
+                    card.classList.remove('hidden');
+                }
 
                 if(lastTitle === null) {
                     lastTitle = data.title;
@@ -216,6 +236,7 @@
         }
 
         function startMorph(card) { isTransitioning = true; card.classList.add('morphing'); }
+        
         function finishMorph(card, data) {
             updateVisuals(data);
             lastTitle = data.title;
@@ -245,7 +266,7 @@
             };
             
             setTimeout(() => {
-                img.classList.add('fade');
+                img.classList.add('fade'); 
                 
                 setTimeout(() => {
                     let finalSrc = primaryPlaceholder;
@@ -256,13 +277,13 @@
                     }
                     
                     img.src = finalSrc;
-                    img.classList.remove('fade');
+                    img.classList.remove('fade'); 
                     
                     img.onerror = function() { 
                         this.src = primaryPlaceholder;
                         this.onerror = function() { this.src = backupPlaceholder; };
                     };
-                }, 500);
+                }, 500); 
             }, 2000);
 
             scrollTimer = setTimeout(() => {
