@@ -127,23 +127,18 @@
         const backupPlaceholder = "https://cdn-icons-png.flaticon.com/512/2329/2329068.png";
         const primaryPlaceholder = "logo.png";
 
-        // HANDLING URL PARAMETERS
+        // URL PARAMETERS
         const urlParams = new URLSearchParams(window.location.search);
-        
-        // ?nobar -> Removes progress bar and time info
         const hideProgressBar = urlParams.has('nobar');
-        
-        // ?ws or ?youtube -> Pulls cover art from Tuna Web Server URL
         const useExternalCover = urlParams.has('ws') || urlParams.has('youtube');
-        
-        // ?local -> Looks for local files (cover_Album_Name.png)
         const useLocalCover = urlParams.has('local');
-        
-        // ?firebot -> Hidden by default, appears via #hash triggers
-        const isFirebotMode = urlParams.has('firebot');
-        
-        // ?debug -> Displays the green status overlay
         const isDebug = urlParams.has('debug');
+
+        // NEW LOGIC PARAMETERS
+        // ?manual or ?nonextsong -> Only show via Firebot hash trigger
+        const isManualMode = urlParams.has('manual') || urlParams.has('nonextsong') || urlParams.has('firebot');
+        // ?always -> Keep widget visible at all times music is playing
+        const isAlwaysMode = urlParams.has('always');
 
         if (hideProgressBar) document.getElementById('card').classList.add('compact');
         if (isDebug) document.getElementById('debug-status').style.display = 'block';
@@ -162,39 +157,24 @@
             return "cover_" + safeName + ".png";
         }
 
+        // Listen for Firebot Hash changes
         window.addEventListener('hashchange', () => {
-            log("Signal received: " + window.location.hash);
-            triggerShow();
+            log("Manual signal received: " + window.location.hash);
+            showTransiently();
         });
 
-        function triggerShow() {
-            const card = document.getElementById('card');
+        /**
+         * Handles making the widget visible for a set duration (15s)
+         */
+        function showTransiently() {
             isForcedVisible = true;
+            document.getElementById('card').classList.remove('hidden');
             
-            card.classList.remove('hidden');
-            startMorph(card);
-            
-            setTimeout(async () => {
-                try {
-                    const response = await fetch('http://localhost:1608/');
-                    const data = await response.json();
-                    if (data.title) {
-                        finishMorph(card, data);
-                    }
-                } catch(e) { log("Error fetching during trigger", "red"); }
-            }, 1000);
-
             if (visibilityTimer) clearTimeout(visibilityTimer);
             visibilityTimer = setTimeout(() => {
                 isForcedVisible = false;
-                if (isFirebotMode) {
-                    startMorph(card);
-                    setTimeout(() => { card.classList.add('hidden'); }, 1500);
-                }
-            }, 15000);
+            }, 15000); // 15 seconds visibility
         }
-
-        triggerShow();
 
         async function updateData() {
             try {
@@ -204,32 +184,49 @@
 
                 if (!data.title) {
                     log("Connected, but no active song.", "orange");
+                    card.classList.add('hidden');
                     return;
                 }
 
-                if (isFirebotMode && !isForcedVisible) {
-                    // Handled by visibilityTimer logic
-                } else {
-                    card.classList.remove('hidden');
-                }
-
-                if(lastTitle === null) {
-                    lastTitle = data.title;
-                    updateVisuals(data);
-                }
-
-                const remaining = (data.duration || 0) - (data.progress || 0);
-                if (remaining <= 2000 && remaining > 0 && !isTransitioning) startMorph(card);
-
-                if (lastTitle !== data.title) {
-                    if (isTransitioning) finishMorph(card, data);
-                    else {
-                        startMorph(card);
-                        setTimeout(() => { finishMorph(card, data); }, 1600);
+                // HANDLE SONG CHANGES
+                if (lastTitle !== data.title && data.title !== null) {
+                    // If it's not manual mode, show the widget automatically on song change
+                    if (!isManualMode && !isAlwaysMode) {
+                        showTransiently();
                     }
-                } 
-                
+
+                    // Trigger Morph Animation
+                    if (lastTitle !== null) { // Don't morph on the very first load
+                        if (isTransitioning) finishMorph(card, data);
+                        else {
+                            startMorph(card);
+                            setTimeout(() => { finishMorph(card, data); }, 1600);
+                        }
+                    } else {
+                        updateVisuals(data);
+                    }
+                    lastTitle = data.title;
+                }
+
+                // VISIBILITY CONTROL
+                if (isAlwaysMode) {
+                    card.classList.remove('hidden');
+                } else if (isForcedVisible) {
+                    card.classList.remove('hidden');
+                } else {
+                    // Only hide if we aren't currently in the middle of a morph animation
+                    if (!isTransitioning) card.classList.add('hidden');
+                }
+
+                // Progress bar and time updates
                 if (!isTransitioning) updateTimeAndBar(data);
+
+                // Morph-out logic for near-end of song (2 seconds remaining)
+                const remaining = (data.duration || 0) - (data.progress || 0);
+                if (remaining <= 2000 && remaining > 0 && !isTransitioning) {
+                    startMorph(card);
+                }
+
             } catch (e) {
                 log("ERROR: Tuna Plugin not found (Check Port 1608)", "red");
             }
@@ -239,7 +236,6 @@
         
         function finishMorph(card, data) {
             updateVisuals(data);
-            lastTitle = data.title;
             setTimeout(() => {
                 card.classList.remove('morphing');
                 setTimeout(() => { isTransitioning = false; }, 1600);
@@ -257,28 +253,17 @@
             document.getElementById('artist').innerText = fullInfo;
 
             const img = document.getElementById('cover_img');
-            
             img.src = primaryPlaceholder;
-            img.onerror = function() { 
-                if (this.src.includes(primaryPlaceholder)) {
-                    this.src = backupPlaceholder; 
-                }
-            };
             
             setTimeout(() => {
                 img.classList.add('fade'); 
-                
                 setTimeout(() => {
                     let finalSrc = primaryPlaceholder;
-                    if (useExternalCover && data.cover_url) {
-                        finalSrc = data.cover_url;
-                    } else if (useLocalCover) {
-                        finalSrc = getLocalFileName(data.album);
-                    }
+                    if (useExternalCover && data.cover_url) finalSrc = data.cover_url;
+                    else if (useLocalCover) finalSrc = getLocalFileName(data.album);
                     
                     img.src = finalSrc;
                     img.classList.remove('fade'); 
-                    
                     img.onerror = function() { 
                         this.src = primaryPlaceholder;
                         this.onerror = function() { this.src = backupPlaceholder; };
@@ -312,6 +297,11 @@
         }
 
         setInterval(updateData, 500);
-    </script>
+
+        // Check for hash on initial load
+        if (window.location.hash) {
+            showTransiently();
+        }
+     </script>
 </body>
 </html>
